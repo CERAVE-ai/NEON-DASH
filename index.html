@@ -54,6 +54,42 @@
             text-shadow: 0 0 30px rgba(255, 0, 85, 0.8);
             display: none;
         }
+        #effect-msg {
+            position: absolute;
+            top: 22%;
+            width: 100%;
+            text-align: center;
+            color: #ffe600;
+            font-size: 1.6rem;
+            font-weight: 900;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            pointer-events: none;
+            z-index: 6;
+            display: none;
+            text-shadow: 0 0 12px #ff0055, 0 0 24px #ffe600;
+        }
+        #flash-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 0, 85, 0.28);
+            pointer-events: none;
+            z-index: 4;
+            display: none;
+        }
+        #game-container.screen-shake {
+            animation: screen-shake 0.07s infinite;
+        }
+        #game-container.glitch-mode canvas {
+            filter: hue-rotate(70deg) saturate(1.8);
+        }
+        @keyframes screen-shake {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(5px, -3px); }
+            50% { transform: translate(-4px, 4px); }
+            75% { transform: translate(3px, 2px); }
+            100% { transform: translate(-2px, -4px); }
+        }
         .animate-pulse-fast {
             animation: pulse-fast 0.4s infinite;
         }
@@ -114,6 +150,8 @@
     
     <!-- Mensaje de advertencia que alternará su contenido -->
     <div id="warning-msg" class="animate-pulse-fast">¡Te Vas A Morir Ya!</div>
+    <div id="effect-msg"></div>
+    <div id="flash-overlay"></div>
     
     <!-- HUD de puntuación -->
     <div id="ui-overlay">
@@ -152,6 +190,9 @@
     const menuOverlay = document.getElementById('menu-overlay');
     const winOverlay = document.getElementById('win-overlay');
     const warningMsg = document.getElementById('warning-msg');
+    const effectMsg = document.getElementById('effect-msg');
+    const flashOverlay = document.getElementById('flash-overlay');
+    const gameContainer = document.getElementById('game-container');
     const lastScoreElement = document.getElementById('last-score');
     const finalScoreMsg = document.getElementById('final-score-msg');
     const startBtn = document.getElementById('startBtn');
@@ -170,14 +211,27 @@
     const GROUND_Y_OFFSET = 120;
     const START_SPEED = 11;
     const SPEED_INCREMENT = 0.3;
+    const PLAYER_TIME_SCALE = 0.65; // El jugador azul se mueve un 35% más despacio.
     let gameSpeed = START_SPEED;
     let animationId = null;
 
     // Temporizador y mensajes alternos
     let warningTimer = 0;
     const SEC_5_IN_FRAMES = 300; 
-    const messages = ["¡Te Vas A Morir Ya!", "¡Eres Muy Malo!"];
+    const messages = [
+        "¡Te Vas A Morir Ya!",
+        "¡Eres Muy Malo!",
+        "¡MIRA DETRÁS DE TI!",
+        "¡NO PIERDAS LA CONCENTRACIÓN!",
+        "¡SALTA AHORA! ¿O NO?"
+    ];
     let currentMessageIndex = 0;
+    let nextAnnoyanceFrame = 360;
+    let effectMessageTimer = 0;
+    let screenShakeTimer = 0;
+    let flashTimer = 0;
+    let glitchTimer = 0;
+    let jumpDelayTimer = 0;
 
     // Variables de control de salto
     let jumpBufferCounter = 0;
@@ -217,8 +271,10 @@
             ctx.restore();
         },
         update() {
-            this.dy += GRAVITY;
-            this.y += this.dy;
+            // El cuadrado azul conserva su salto, pero su movimiento
+            // vertical avanza al 65% de la velocidad original.
+            this.dy += GRAVITY * PLAYER_TIME_SCALE;
+            this.y += this.dy * PLAYER_TIME_SCALE;
             const groundY = canvas.height - GROUND_Y_OFFSET - this.height;
             
             if (this.y >= groundY) {
@@ -231,7 +287,7 @@
                 if (jumpBufferCounter > 0) this.executeJump();
             } else {
                 isOnGround = false;
-                this.rotation += 0.15 + (gameSpeed / 100); 
+                this.rotation += (0.15 + (gameSpeed / 100)) * PLAYER_TIME_SCALE;
             }
 
             if (jumpBufferCounter > 0) jumpBufferCounter--;
@@ -314,6 +370,83 @@
         ctx.globalAlpha = 1.0;
     }
 
+    function showEffectMessage(text, duration = 70) {
+        effectMsg.innerText = text;
+        effectMsg.style.display = 'block';
+        effectMessageTimer = duration;
+    }
+
+    function triggerAnnoyance() {
+        const effect = Math.floor(Math.random() * 4);
+        screenShakeTimer = 30;
+        flashTimer = 8;
+
+        if (effect === 0) {
+            showEffectMessage("¡NO TE DISTRAIGAS!");
+        } else if (effect === 1) {
+            glitchTimer = 65;
+            showEffectMessage("¡INTERFERENCIA!");
+        } else if (effect === 2) {
+            jumpDelayTimer = 42;
+            showEffectMessage("¡RESPUESTA LENTA!");
+        } else {
+            showEffectMessage("¡SEÑUELO DETECTADO!");
+            createExplosion(
+                canvas.width * (0.35 + Math.random() * 0.45),
+                canvas.height * (0.25 + Math.random() * 0.35),
+                '#ffe600'
+            );
+        }
+    }
+
+    function updateAnnoyances() {
+        if (screenShakeTimer > 0) {
+            screenShakeTimer--;
+            gameContainer.classList.add('screen-shake');
+        } else {
+            gameContainer.classList.remove('screen-shake');
+        }
+
+        if (glitchTimer > 0) {
+            glitchTimer--;
+            gameContainer.classList.add('glitch-mode');
+        } else {
+            gameContainer.classList.remove('glitch-mode');
+        }
+
+        if (flashTimer > 0) {
+            flashTimer--;
+            flashOverlay.style.display = 'block';
+        } else {
+            flashOverlay.style.display = 'none';
+        }
+
+        if (effectMessageTimer > 0) {
+            effectMessageTimer--;
+        } else {
+            effectMsg.style.display = 'none';
+        }
+
+        if (jumpDelayTimer > 0) jumpDelayTimer--;
+
+        if (frameCount >= nextAnnoyanceFrame) {
+            triggerAnnoyance();
+            nextAnnoyanceFrame = frameCount + 300 + Math.floor(Math.random() * 260);
+        }
+    }
+
+    function drawGlitchLines() {
+        if (glitchTimer <= 0) return;
+        ctx.save();
+        ctx.globalAlpha = 0.45;
+        for (let i = 0; i < 5; i++) {
+            const y = Math.random() * canvas.height;
+            ctx.fillStyle = i % 2 === 0 ? '#ff0055' : '#00f2ff';
+            ctx.fillRect(Math.random() * 30, y, canvas.width * (0.15 + Math.random() * 0.35), 2);
+        }
+        ctx.restore();
+    }
+
     function checkCollision(p, o) {
         const paddingX = 4;
         const paddingY = 4;
@@ -328,6 +461,9 @@
     function handleGameOver() {
         gameActive = false;
         warningMsg.style.display = 'none';
+        effectMsg.style.display = 'none';
+        flashOverlay.style.display = 'none';
+        gameContainer.classList.remove('screen-shake', 'glitch-mode');
         createExplosion(player.x + player.width/2, player.y + player.height/2, '#00f2ff');
         createExplosion(player.x + player.width/2, player.y + player.height/2, '#ffffff');
         
@@ -345,6 +481,9 @@
     function handleWin() {
         gameActive = false;
         warningMsg.style.display = 'none';
+        effectMsg.style.display = 'none';
+        flashOverlay.style.display = 'none';
+        gameContainer.classList.remove('screen-shake', 'glitch-mode');
         updateHighScore();
         for(let j=0; j<8; j++) {
             setTimeout(() => {
@@ -377,6 +516,15 @@
         warningTimer = 0;
         currentMessageIndex = 0;
         warningMsg.innerText = messages[0];
+        effectMsg.style.display = 'none';
+        flashOverlay.style.display = 'none';
+        gameContainer.classList.remove('screen-shake', 'glitch-mode');
+        nextAnnoyanceFrame = 360;
+        effectMessageTimer = 0;
+        screenShakeTimer = 0;
+        flashTimer = 0;
+        glitchTimer = 0;
+        jumpDelayTimer = 0;
         nextObstacleFrame = 40; 
         jumpBufferCounter = 0;
         player.reset();
@@ -413,6 +561,7 @@
         drawBackground();
         
         if (gameActive) {
+            updateAnnoyances();
             player.update();
             player.draw();
 
@@ -472,6 +621,7 @@
         }
 
         drawParticles();
+        drawGlitchLines();
         frameCount++;
         
         if (gameActive || particles.length > 0) {
@@ -482,7 +632,7 @@
     function handleInput(e) {
         if (e.type === 'touchstart' || e.type === 'mousedown' || e.code === 'Space' || e.code === 'ArrowUp') {
             if (gameActive) {
-                player.requestJump();
+                if (jumpDelayTimer <= 0) player.requestJump();
                 if (e.cancelable) e.preventDefault();
             }
         }
