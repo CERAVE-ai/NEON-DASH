@@ -210,7 +210,7 @@
     const JUMP_FORCE = -18.5;      
     const GROUND_Y_OFFSET = 120;
     const START_SPEED = 11;
-    const SPEED_INCREMENT = 0.195; // Aumenta un 35% menos por obstáculo: 0.3 * 0.65.
+    const SPEED_INCREMENT = 0.4; // Aumento de velocidad por cada obstáculo superado.
     let gameSpeed = START_SPEED;
     let animationId = null;
 
@@ -230,7 +230,6 @@
     let screenShakeTimer = 0;
     let flashTimer = 0;
     let glitchTimer = 0;
-    let jumpDelayTimer = 0;
 
     // Variables de control de salto
     let jumpBufferCounter = 0;
@@ -383,9 +382,6 @@
         } else if (effect === 1) {
             glitchTimer = 65;
             showEffectMessage("¡INTERFERENCIA!");
-        } else if (effect === 2) {
-            jumpDelayTimer = 42;
-            showEffectMessage("¡RESPUESTA LENTA!");
         } else {
             showEffectMessage("¡SEÑUELO DETECTADO!");
             createExplosion(
@@ -423,8 +419,6 @@
         } else {
             effectMsg.style.display = 'none';
         }
-
-        if (jumpDelayTimer > 0) jumpDelayTimer--;
 
         if (frameCount >= nextAnnoyanceFrame) {
             triggerAnnoyance();
@@ -521,7 +515,6 @@
         screenShakeTimer = 0;
         flashTimer = 0;
         glitchTimer = 0;
-        jumpDelayTimer = 0;
         nextObstacleFrame = 40; 
         jumpBufferCounter = 0;
         player.reset();
@@ -629,7 +622,7 @@
     function handleInput(e) {
         if (e.type === 'touchstart' || e.type === 'mousedown' || e.code === 'Space' || e.code === 'ArrowUp') {
             if (gameActive) {
-                if (jumpDelayTimer <= 0) player.requestJump();
+                player.requestJump();
                 if (e.cancelable) e.preventDefault();
             }
         }
