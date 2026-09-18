@@ -155,7 +155,7 @@
     
     <!-- HUD de puntuación -->
     <div id="ui-overlay">
-        <div class="text-3xl font-black italic">PUNTOS: <span id="score">0</span> / 100</div>
+        <div class="text-3xl font-black italic">PUNTOS: <span id="score">0</span></div>
         <div class="text-sm font-bold opacity-80 uppercase tracking-widest">RÉCORD: <span id="highScore">0</span></div>
         <div class="text-xs mt-1 text-cyan-400 font-bold">VELOCIDAD: <span id="speed-display">0</span></div>
     </div>
@@ -167,17 +167,9 @@
         <p id="final-score-msg" class="text-2xl mb-8 hidden font-bold">PUNTUACIÓN: <span id="last-score" class="text-pink-500">0</span></p>
         <button id="startBtn" class="btn-action">JUGAR</button>
         <div class="mt-8 text-xs text-gray-400 uppercase tracking-widest italic text-center">
-            Objetivo: 100 puntos para ganar<br>
+            Objetivo: sobrevivir el mayor tiempo posible<br>
             ¡Los mensajes intentarán distraerte!
         </div>
-    </div>
-
-    <!-- Pantalla de Victoria -->
-    <div id="win-overlay" class="overlay-screen hidden">
-        <div class="text-8xl mb-4">🏆</div>
-        <h2 class="text-6xl font-black mb-2 win-glow">¡LO LOGRASTE!</h2>
-        <p class="text-xl mb-8 text-gray-300">Has superado todos los obstáculos y las distracciones.</p>
-        <button id="winResetBtn" class="btn-action">REINTENTAR</button>
     </div>
 </div>
 
@@ -188,7 +180,6 @@
     const speedDisplay = document.getElementById('speed-display');
     const highScoreElement = document.getElementById('highScore');
     const menuOverlay = document.getElementById('menu-overlay');
-    const winOverlay = document.getElementById('win-overlay');
     const warningMsg = document.getElementById('warning-msg');
     const effectMsg = document.getElementById('effect-msg');
     const flashOverlay = document.getElementById('flash-overlay');
@@ -196,11 +187,9 @@
     const lastScoreElement = document.getElementById('last-score');
     const finalScoreMsg = document.getElementById('final-score-msg');
     const startBtn = document.getElementById('startBtn');
-    const winResetBtn = document.getElementById('winResetBtn');
     const statusLabel = document.getElementById('game-status-label');
 
     // Configuración de juego
-    const WIN_SCORE = 100;
     let gameActive = false;
     let score = 0;
     let highScore = localStorage.getItem('neonDashHighScore') || 0;
@@ -210,7 +199,7 @@
     const JUMP_FORCE = -18.5;      
     const GROUND_Y_OFFSET = 120;
     const START_SPEED = 11;
-    const SPEED_INCREMENT = 0.4; // Aumento de velocidad por cada obstáculo superado.
+    const SPEED_INCREMENT = 0.195; // Aumento de velocidad por cada obstáculo superado.
     let gameSpeed = START_SPEED;
     let animationId = null;
 
@@ -469,24 +458,6 @@
         }, 600);
     }
 
-    function handleWin() {
-        gameActive = false;
-        warningMsg.style.display = 'none';
-        effectMsg.style.display = 'none';
-        flashOverlay.style.display = 'none';
-        gameContainer.classList.remove('screen-shake', 'glitch-mode');
-        updateHighScore();
-        for(let j=0; j<8; j++) {
-            setTimeout(() => {
-                createExplosion(Math.random() * canvas.width, Math.random() * canvas.height, '#00f2ff');
-                createExplosion(Math.random() * canvas.width, Math.random() * canvas.height, '#ff0055');
-            }, j * 150);
-        }
-        setTimeout(() => {
-            winOverlay.classList.remove('hidden');
-        }, 500);
-    }
-
     function updateHighScore() {
         if (score > highScore) {
             highScore = score;
@@ -494,6 +465,7 @@
             highScoreElement.innerText = highScore;
         }
     }
+    window.addEventListener('beforeunload', updateHighScore);
 
     function startGame() {
         cancelAnimationFrame(animationId);
@@ -520,7 +492,6 @@
         player.reset();
         gameActive = true;
         menuOverlay.classList.add('hidden');
-        winOverlay.classList.add('hidden');
         warningMsg.style.display = 'none';
         animate();
     }
@@ -593,13 +564,9 @@
                     obstacles[i].passed = true;
                     score++;
                     scoreElement.innerText = score;
+                    updateHighScore();
                     gameSpeed += SPEED_INCREMENT; 
                     speedDisplay.innerText = gameSpeed.toFixed(1);
-                    
-                    if (score >= WIN_SCORE) {
-                        handleWin();
-                        return;
-                    }
                 }
                 
                 if (obstacles[i].x + obstacles[i].width < -100) {
@@ -629,11 +596,6 @@
     }
 
     startBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        startGame();
-    });
-    
-    winResetBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         startGame();
     });
