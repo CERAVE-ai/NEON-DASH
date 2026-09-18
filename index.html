@@ -210,8 +210,7 @@
     const JUMP_FORCE = -18.5;      
     const GROUND_Y_OFFSET = 120;
     const START_SPEED = 11;
-    const SPEED_INCREMENT = 0.3;
-    const PLAYER_TIME_SCALE = 0.65; // El jugador azul se mueve un 35% más despacio.
+    const SPEED_INCREMENT = 0.195; // Aumenta un 35% menos por obstáculo: 0.3 * 0.65.
     let gameSpeed = START_SPEED;
     let animationId = null;
 
@@ -271,10 +270,8 @@
             ctx.restore();
         },
         update() {
-            // El cuadrado azul conserva su salto, pero su movimiento
-            // vertical avanza al 65% de la velocidad original.
-            this.dy += GRAVITY * PLAYER_TIME_SCALE;
-            this.y += this.dy * PLAYER_TIME_SCALE;
+            this.dy += GRAVITY;
+            this.y += this.dy;
             const groundY = canvas.height - GROUND_Y_OFFSET - this.height;
             
             if (this.y >= groundY) {
@@ -287,7 +284,7 @@
                 if (jumpBufferCounter > 0) this.executeJump();
             } else {
                 isOnGround = false;
-                this.rotation += (0.15 + (gameSpeed / 100)) * PLAYER_TIME_SCALE;
+                this.rotation += 0.15 + (gameSpeed / 100); 
             }
 
             if (jumpBufferCounter > 0) jumpBufferCounter--;
